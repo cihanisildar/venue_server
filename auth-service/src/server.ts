@@ -1,33 +1,42 @@
-import express from 'express';
+import cookieParser from 'cookie-parser'; // Add this import
 import cors from 'cors';
-import helmet from 'helmet';
 import dotenv from 'dotenv';
+import express from 'express';
+import helmet from 'helmet';
+import { AuthController } from './modules/auth/controllers/auth.controller';
+import { setupAuthRoutes } from './modules/auth/routes/auth.routes';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3002;
+const port = process.env.PORT || 3001;
 
+// Middleware
 app.use(helmet());
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',  // Frontend
+    'http://localhost:8000',  // API Gateway
+    process.env.CORS_ORIGIN
+  ].filter(Boolean) as string[],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-correlation-id', 'x-user-id'],
+}));
 
-// Basic health check endpoint
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());  // Add cookie parser middleware
+
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
-// User profile endpoint
-app.get('/users/profile', (req, res) => {
-  // Implementation for getting user profile
-  res.json({
-    id: '123',
-    username: 'testuser',
-    email: 'test@example.com',
-    name: 'Test User'
-  });
-});
+// Set up auth routes
+const authController = new AuthController();
+app.use('/', setupAuthRoutes(authController));
 
 app.listen(port, () => {
-  console.log(`🚀 User Service running on port ${port}`);
+  console.log(`🚀 Auth Service running on port ${port}`);
 });

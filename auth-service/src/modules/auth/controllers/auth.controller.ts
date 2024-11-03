@@ -45,6 +45,8 @@ export class AuthController {
   }
 
   public register: RequestHandler = async (req: Request, res: Response) => {
+    console.log("register", req.body);
+    
     try {
       const validatedData = registerUserSchema.parse(req.body);
       const result = await this.service.register(validatedData);
@@ -63,8 +65,6 @@ export class AuthController {
             id: result.user.id,
             email: result.user.email,
             username: result.user.username,
-            name: result.user.name,
-            reliabilityScore: result.user.reliabilityScore,
           },
           ...(this.isWebRequest(req) ? {} : tokens),
         },
@@ -98,8 +98,6 @@ export class AuthController {
             id: result.user.id,
             email: result.user.email,
             username: result.user.username,
-            name: result.user.name,
-            reliabilityScore: result.user.reliabilityScore,
           },
           ...(this.isWebRequest(req) ? {} : tokens),
         },

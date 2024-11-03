@@ -2,12 +2,10 @@ import { compare } from 'bcrypt';
 import { sign, verify } from 'jsonwebtoken';
 import { AuthRepository } from '../repositories/auth.repository';
 import { RegisterUser, LoginUser, TokenPayload } from '../interfaces/auth.interface';
-import { UserRepository } from '../../users/repositories/user.repository';
 import prisma from '../../../../prisma/prisma';
 
 export class AuthService {
   private repository: AuthRepository;
-  private userRepository: UserRepository;
   private readonly JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'your-access-secret-key';
   private readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
   private readonly ACCESS_TOKEN_EXPIRY = '15m';
@@ -15,7 +13,6 @@ export class AuthService {
 
   constructor() {
     this.repository = new AuthRepository();
-    this.userRepository = new UserRepository(prisma);
   }
 
   async register(userData: RegisterUser) {
@@ -24,7 +21,7 @@ export class AuthService {
       throw new Error('User already exists');
     }
 
-    const existingUsername = await this.userRepository.findUserByUsername(userData.username);
+    const existingUsername = await this.repository.findUserByUsername(userData.username);
     if (existingUsername) {
       throw new Error('Username already taken');
     }
@@ -96,7 +93,6 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       role: user.role || 'user',
-      reliabilityScore: user.reliabilityScore
     };
 
     const accessToken = sign(tokenPayload, this.JWT_ACCESS_SECRET, { 
@@ -115,7 +111,7 @@ export class AuthService {
   async validateAccessToken(token: string): Promise<TokenPayload> {
     try {
       const decoded = verify(token, this.JWT_ACCESS_SECRET) as TokenPayload;
-      const user = await this.userRepository.findById(decoded.userId);
+      const user = await this.repository.findById(decoded.userId);
       
       if (!user) {
         throw new Error('User not found');
@@ -132,7 +128,7 @@ export class AuthService {
   }
 
   async updatePassword(userId: string, oldPassword: string, newPassword: string) {
-    const user = await this.userRepository.findById(userId);
+    const user = await this.repository.findById(userId);
     if (!user || !user.account) {
       throw new Error('User not found');
     }
