@@ -9,16 +9,17 @@ datasource db {
   schemas  = ["user"]
 }
 
-model User {
+model UserProfile {
   id              String           @id @default(cuid())
   email           String           @unique
   username        String           @unique
+  name            String?          // Made optional as requested
   age             Int?
-  name            String
   phoneNumber     String?
   role            UserRole         @default(CUSTOMER)  
   reliabilityScore Float           @default(100.0)
   restrictedUntil DateTime?
+  preferences     UserPreference?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -27,7 +28,8 @@ model User {
 
 model UserPreference {
   id            String    @id @default(cuid())
-  userId        String
+  userId        String    @unique
+  userProfile   UserProfile @relation(fields: [userId], references: [id])
   budget        Float
   petsAllowed   Boolean   @default(false)
   quiet         Boolean   @default(false)

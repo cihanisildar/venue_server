@@ -19,7 +19,7 @@ export class AuthServiceProxy {
 
   async handleLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const response = await this.axiosInstance.post('/auth/login', req.body, {
+      const response = await this.axiosInstance.post('/login', req.body, {
         headers: this.getRequestHeaders(req)
       });
       res.status(200).json(response.data);
@@ -29,8 +29,10 @@ export class AuthServiceProxy {
   }
 
   async handleRegister(req: Request, res: Response, next: NextFunction): Promise<void> {
+    console.log('Handling registration in AuthServiceProxy:', req.body);
+
     try {
-      const response = await this.axiosInstance.post('/auth/register', req.body, {
+      const response = await this.axiosInstance.post('/register', req.body, {
         headers: this.getRequestHeaders(req)
       });
       res.status(201).json(response.data);
@@ -41,7 +43,7 @@ export class AuthServiceProxy {
 
   async handleRefresh(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const response = await this.axiosInstance.post('/auth/refresh', {
+      const response = await this.axiosInstance.post('/refresh', {
         refreshToken: req.cookies.vn_refresh_token || req.body.refreshToken
       }, {
         headers: this.getRequestHeaders(req)
@@ -54,7 +56,7 @@ export class AuthServiceProxy {
 
   async handleLogout(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const response = await this.axiosInstance.post('/auth/logout', {
+      const response = await this.axiosInstance.post('/logout', {
         refreshToken: req.cookies.vn_refresh_token || req.body.refreshToken
       }, {
         headers: this.getRequestHeaders(req)
@@ -67,7 +69,7 @@ export class AuthServiceProxy {
 
   async handleUpdatePassword(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const response = await this.axiosInstance.put('/auth/password', req.body, {
+      const response = await this.axiosInstance.put('/password', req.body, {
         headers: this.getRequestHeaders(req)
       });
       res.status(200).json(response.data);

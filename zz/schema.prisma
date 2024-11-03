@@ -1,0 +1,362 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User-related models
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  username        String           @unique
+  age             Int?
+  name            String
+  phoneNumber     String?
+  role            UserRole         @default(CUSTOMER)  
+  account         UserAccount?     // Relation to authentication data
+  preferences     UserPreference[]
+  reviews         Review[]
+  cafeOwner       CafeOwner?  
+  venueManager    VenueManager?    
+  rewards         Reward[]
+  reliabilityScore Float           @default(100.0)  // 100 is perfect score
+  restrictedUntil DateTime?        // If user is temporarily restricted
+  refreshTokens   RefreshToken[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model UserAccount {
+  id                String    @id @default(cuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id])
+  hashedPassword   String
+  salt             String    // For additional security
+  lastLoginAt      DateTime?
+  passwordChangedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model CafeOwner {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  taxId           String    @unique
+  businessLicense String
+  venues          Venue[]   // One owner can have multiple venues
+  managers        VenueManager[]
+  invitations     ManagerInvitation[]
+  isVerified      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model ManagerInvitation {
+  id          String          @id @default(cuid())
+  ownerId     String
+  owner       CafeOwner       @relation(fields: [ownerId], references: [id])
+  venueId     String
+  venue       Venue           @relation(fields: [venueId], references: [id])
+  email       String          // Email of the person being invited
+  status      InviteStatus    @default(PENDING)
+  token       String          @unique // For invitation link
+  expiresAt   DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([venueId, email])
+}
+
+model UserPreference {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  budget        Float
+  petsAllowed   Boolean   @default(false)
+  quiet         Boolean   @default(false)
+  outdoor       Boolean   @default(false)
+  wifi          Boolean   @default(false)
+  parking       Boolean   @default(false)
+  accessibility Boolean   @default(false)
+  studyPlace    Boolean   @default(false)
+  noiseLevel    NoisePreference? @default(MODERATE)
+  preferredTime TimePreference?  @default(ANY)
+  groupSize     Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Venue-related models
+model Venue {
+  id           String         @id @default(cuid())
+  ownerId      String
+  owner        CafeOwner      @relation(fields: [ownerId], references: [id])
+  manager      VenueManager?
+  managerInvites ManagerInvitation[]
+  name         String
+  type         VenueType
+  description  String?
+  address      String
+  location     Location?
+  menuItems    MenuItem[]
+  features     VenueFeature[]
+  openingHours OpeningHour[]
+  reviews      Review[]
+  images       VenueImage[]
+  events       Event[]        
+  updates      VenueUpdate[] 
+  rewards      Reward[]
+  avgPrice     Float
+  rating       Float         @default(0)
+  isActive     Boolean       @default(true)
+  isApproved   Boolean       @default(false) 
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model VenueManager {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  venueId     String    @unique
+  venue       Venue     @relation(fields: [venueId], references: [id])
+  ownerId     String    // Add this to track which owner created this manager
+  owner       CafeOwner @relation(fields: [ownerId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  venueId   String   @unique
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  latitude  Float
+  longitude Float
+  city      String
+  district  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  name        String
+  description String?
+  price       Float
+  category    String
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VenueFeature {
+  id          String   @id @default(cuid())
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  petsAllowed Boolean  @default(false)
+  quiet       Boolean  @default(false)
+  outdoor     Boolean  @default(false)
+  wifi        Boolean  @default(false)
+  parking     Boolean  @default(false)
+  accessibility Boolean @default(false)
+  maxGroupSize Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VenueUpdate {
+  id          String       @id @default(cuid())
+  venueId     String
+  venue       Venue        @relation(fields: [venueId], references: [id])
+  type        UpdateType
+  oldData     Json
+  newData     Json
+  status      UpdateStatus @default(PENDING)
+  reviewedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Event {
+  id          String       @id @default(cuid())
+  venueId     String
+  venue       Venue        @relation(fields: [venueId], references: [id])
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  price       Float?
+  isPrivate   Boolean      @default(false)
+  status      EventStatus  @default(UPCOMING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+
+model OpeningHour {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  dayOfWeek Int      // 0-6 (Sunday-Saturday)
+  openTime  String
+  closeTime String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VenueImage {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  url       String
+  caption   String?
+  isMain    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Review {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  venueId       String
+  venue         Venue     @relation(fields: [venueId], references: [id])
+  rating        Rating?
+  comment       String?
+  images        String[]
+  isVerified    Boolean   @default(false)
+  checkInLocation Json?
+  checkInTime    DateTime?
+  reviewType    ReviewType @default(RATING_ONLY)  // Fixed default value
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([venueId, isVerified])
+}
+
+model Rating {
+  id            String    @id @default(cuid())
+  review        Review    @relation(fields: [reviewId], references: [id])
+  reviewId      String    @unique
+  overall       Int       // Overall rating (1-5)
+  atmosphere    Int?      // Optional specific ratings
+  service       Int?
+  valueForMoney Int?
+  cleanliness   Int?
+  foodQuality   Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Reward {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  venueId     String
+  venue       Venue     @relation(fields: [venueId], references: [id])
+  type        RewardType
+  code        String    @unique
+  value       Float
+  isUsed      Boolean   @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+}
+
+//Token
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Enums
+
+enum UserRole {
+  CUSTOMER
+  CAFE_OWNER
+  VENUE_MANAGER
+  ADMIN
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum UpdateType {
+  GENERAL_INFO
+  MENU
+  FEATURES
+  OPENING_HOURS
+  IMAGES
+}
+
+enum UpdateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EventStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum VenueType {
+  CAFE
+  RESTAURANT
+  HISTORICAL_PLACE
+  MUSEUM
+  PARK
+  OTHER
+}
+
+enum TimePreference {
+  EARLY_MORNING
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+  ANY
+}
+
+enum NoisePreference {
+  SILENT
+  QUIET
+  MODERATE
+  LIVELY
+}
+
+enum RewardType {
+  EVENT_ATTENDANCE
+  LOYALTY_POINTS
+  SPECIAL_DISCOUNT
+}
+
+enum ReviewType {
+  RATING_ONLY     // Just a star rating
+  QUICK_REVIEW    // Rating + short comment
+  DETAILED_REVIEW // Rating + detailed review + possibly photos
+}

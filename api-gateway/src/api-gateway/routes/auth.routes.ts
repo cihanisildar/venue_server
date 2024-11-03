@@ -14,7 +14,13 @@ export class AuthRoutes {
     this.router = Router();
     this.authProxy = new AuthServiceProxy();
     this.initializeRoutes();
+
+      // Debug logging
+      console.log('Auth routes initialized with paths:', 
+        this.router.stack.map(r => r.route?.path).filter(Boolean)
+      );
   }
+  
 
   private initializeRoutes() {
     // Public routes

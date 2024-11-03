@@ -1,3 +1,4 @@
+// services/user.service.ts
 import { CustomError } from "../../../common/errors/custom.error";
 import {
   UpdateUserPreferenceDTO,
@@ -18,27 +19,21 @@ export class UserService {
     const preferences = await this.userRepository.findUserPreferences(userId);
 
     return {
-      user: {
-        ...user,
-        preferences: preferences || undefined,
-      },
+      ...user,
+      preferences: preferences || undefined,
     };
   }
 
   async updateUserPreferences(
     userId: string,
-    preferences: UpdateUserPreferenceDTO
+    preferencesData: UpdateUserPreferenceDTO
   ): Promise<IUserPreference> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new CustomError("User not found", 404);
     }
 
-    const updatedPreferences = await this.userRepository.updatePreferences(
-      userId,
-      preferences
-    );
-    return updatedPreferences;
+    return this.userRepository.updatePreferences(userId, preferencesData);
   }
 
   async getUserReliabilityScore(userId: string): Promise<number> {

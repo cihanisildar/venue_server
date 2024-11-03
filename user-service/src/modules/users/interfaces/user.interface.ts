@@ -1,13 +1,12 @@
-import { NoisePreference, TimePreference, UserAccount, UserRole } from "@prisma/client";
+// interfaces/user.interface.ts
+import { NoisePreference, TimePreference, UserRole } from "@prisma/client";
 
-// Base User Interface
-export interface IUser {
+export interface IUserProfile {
   id: string;
   email: string;
   username: string;
-  account?: UserAccount | null;
+  name?: string | null;
   age: number | null;
-  name: string;
   phoneNumber: string | null;
   role: UserRole;
   reliabilityScore: number;
@@ -16,19 +15,6 @@ export interface IUser {
   updatedAt: Date;
 }
 
-// User Account Interface
-export interface IUserAccount {
-  id: string;
-  userId: string;
-  hashedPassword: string;
-  salt: string;
-  lastLoginAt: Date | null;
-  passwordChangedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// User Preferences Interface
 export interface IUserPreference {
   id: string;
   userId: string;
@@ -40,18 +26,22 @@ export interface IUserPreference {
   parking: boolean;
   accessibility: boolean;
   studyPlace: boolean;
-  noiseLevel?: NoisePreference | null;
-  preferredTime?: TimePreference | null;
+  noiseLevel: NoisePreference | null;
+  preferredTime: TimePreference | null;
   groupSize: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// DTO Interfaces
-export interface CreateUserDTO {
+export interface IUserProfileResponse extends IUserProfile {
+  preferences?: IUserPreference;
+}
+
+// DTOs
+export interface CreateUserProfileDTO {
   email: string;
   username: string;
-  name: string;
+  name?: string;
   age?: number;
   phoneNumber?: string;
   role?: UserRole;
@@ -69,16 +59,4 @@ export interface UpdateUserPreferenceDTO {
   noiseLevel: NoisePreference | null;
   preferredTime: TimePreference | null;
   groupSize: number;
-}
-
-// Response interfaces
-export interface IUserResponse extends Omit<IUser, "restrictedUntil"> {
-  age: number | null;
-  phoneNumber: string | null;
-  preferences?: IUserPreference;
-}
-
-export interface IUserProfileResponse {
-  user: IUserResponse;
-  account?: Omit<IUserAccount, "hashedPassword" | "salt">;
 }
