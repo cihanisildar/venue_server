@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["venue"]
+}
+
+model Venue {
+  id           String         @id @default(cuid())
+  ownerId      String
+  owner        CafeOwner      @relation(fields: [ownerId], references: [id])
+  manager      VenueManager?
+  managerInvites ManagerInvitation[]
+  name         String
+  type         VenueType
+  description  String?
+  address      String
+  location     Location?
+  menuItems    MenuItem[]
+  features     VenueFeature[]
+  openingHours OpeningHour[]
+  reviews      Review[]
+  images       VenueImage[]
+  events       Event[]        
+  updates      VenueUpdate[] 
+  rewards      Reward[]
+  avgPrice     Float
+  rating       Float         @default(0)
+  isActive     Boolean       @default(true)
+  isApproved   Boolean       @default(false) 
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@schema("venue")
+}
+
+model CafeOwner {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  taxId           String    @unique
+  businessLicense String
+  venues          Venue[]
+  managers        VenueManager[]
+  invitations     ManagerInvitation[]
+  isVerified      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@schema("venue")
+}
+
+model VenueManager {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  venueId     String    @unique
+  venue       Venue     @relation(fields: [venueId], references: [id])
+  ownerId     String
+  owner       CafeOwner @relation(fields: [ownerId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@schema("venue")
+}
+
+model ManagerInvitation {
+  id          String          @id @default(cuid())
+  ownerId     String
+  owner       CafeOwner       @relation(fields: [ownerId], references: [id])
+  venueId     String
+  venue       Venue           @relation(fields: [venueId], references: [id])
+  email       String
+  status      InviteStatus    @default(PENDING)
+  token       String          @unique
+  expiresAt   DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([venueId, email])
+  @@schema("venue")
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  venueId   String   @unique
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  latitude  Float
+  longitude Float
+  city      String
+  district  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@schema("venue")
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  name        String
+  description String?
+  price       Float
+  category    String
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@schema("venue")
+}
+
+model VenueFeature {
+  id          String   @id @default(cuid())
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  petsAllowed Boolean  @default(false)
+  quiet       Boolean  @default(false)
+  outdoor     Boolean  @default(false)
+  wifi        Boolean  @default(false)
+  parking     Boolean  @default(false)
+  accessibility Boolean @default(false)
+  maxGroupSize Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@schema("venue")
+}
+
+model OpeningHour {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@schema("venue")
+}
+
+model VenueImage {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  url       String
+  caption   String?
+  isMain    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@schema("venue")
+}
+
+model VenueUpdate {
+  id          String       @id @default(cuid())
+  venueId     String
+  venue       Venue        @relation(fields: [venueId], references: [id])
+  type        UpdateType
+  oldData     Json
+  newData     Json
+  status      UpdateStatus @default(PENDING)
+  reviewedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@schema("venue")
+}
+
+model Event {
+  id          String       @id @default(cuid())
+  venueId     String
+  venue       Venue        @relation(fields: [venueId], references: [id])
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  price       Float?
+  isPrivate   Boolean      @default(false)
+  status      EventStatus  @default(UPCOMING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@schema("venue")
+}
+
+model Review {
+  id            String    @id @default(cuid())
+  userId        String
+  venueId       String
+  venue         Venue     @relation(fields: [venueId], references: [id])
+  rating        Rating?
+  comment       String?
+  images        String[]
+  isVerified    Boolean   @default(false)
+  checkInLocation Json?
+  checkInTime    DateTime?
+  reviewType    ReviewType @default(RATING_ONLY)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([venueId, isVerified])
+  @@schema("venue")
+}
+
+model Rating {
+  id            String    @id @default(cuid())
+  review        Review    @relation(fields: [reviewId], references: [id])
+  reviewId      String    @unique
+  overall       Int
+  atmosphere    Int?
+  service       Int?
+  valueForMoney Int?
+  cleanliness   Int?
+  foodQuality   Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@schema("venue")
+}
+
+model Reward {
+  id          String    @id @default(cuid())
+  userId      String
+  venueId     String
+  venue       Venue     @relation(fields: [venueId], references: [id])
+  type        RewardType
+  code        String    @unique
+  value       Float
+  isUsed      Boolean   @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@schema("venue")
+}
+
+enum VenueType {
+  CAFE
+  RESTAURANT
+  HISTORICAL_PLACE
+  MUSEUM
+  PARK
+  OTHER
+
+  @@schema("venue")
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+
+  @@schema("venue")
+}
+
+enum UpdateType {
+  GENERAL_INFO
+  MENU
+  FEATURES
+  OPENING_HOURS
+  IMAGES
+
+  @@schema("venue")
+}
+
+enum UpdateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@schema("venue")
+}
+
+enum EventStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+
+  @@schema("venue")
+}
+
+enum RewardType {
+  EVENT_ATTENDANCE
+  LOYALTY_POINTS
+  SPECIAL_DISCOUNT
+
+  @@schema("venue")
+}
+
+enum ReviewType {
+  RATING_ONLY
+  QUICK_REVIEW
+  DETAILED_REVIEW
+
+  @@schema("venue")
+}
