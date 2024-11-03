@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["auth"]
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  username        String           @unique
+  role            UserRole         @default(CUSTOMER)
+  account         UserAccount?
+  refreshTokens   RefreshToken[]
+  restrictedUntil DateTime?
+
+  @@schema("auth")
+}
+
+model UserAccount {
+  id                String    @id @default(cuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id])
+  hashedPassword   String
+  salt             String
+  lastLoginAt      DateTime?
+  passwordChangedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@schema("auth")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@schema("auth")
+}
+
+enum UserRole {
+  CUSTOMER
+  CAFE_OWNER
+  VENUE_MANAGER
+  ADMIN
+
+  @@schema("auth")
+}
