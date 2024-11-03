@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["user"]
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  username        String           @unique
+  age             Int?
+  name            String
+  phoneNumber     String?
+  role            UserRole         @default(CUSTOMER)  
+  reliabilityScore Float           @default(100.0)
+  restrictedUntil DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@schema("user")
+}
+
+model UserPreference {
+  id            String    @id @default(cuid())
+  userId        String
+  budget        Float
+  petsAllowed   Boolean   @default(false)
+  quiet         Boolean   @default(false)
+  outdoor       Boolean   @default(false)
+  wifi          Boolean   @default(false)
+  parking       Boolean   @default(false)
+  accessibility Boolean   @default(false)
+  studyPlace    Boolean   @default(false)
+  noiseLevel    NoisePreference? @default(MODERATE)
+  preferredTime TimePreference?  @default(ANY)
+  groupSize     Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@schema("user")
+}
+
+enum UserRole {
+  CUSTOMER
+  CAFE_OWNER
+  VENUE_MANAGER
+  ADMIN
+
+  @@schema("user")
+}
+
+enum TimePreference {
+  EARLY_MORNING
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+  ANY
+
+  @@schema("user")
+}
+
+enum NoisePreference {
+  SILENT
+  QUIET
+  MODERATE
+  LIVELY
+
+  @@schema("user")
+}
