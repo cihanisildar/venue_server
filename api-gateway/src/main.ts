@@ -30,7 +30,8 @@ class App {
         origin: process.env.CLIENT_URL || "http://localhost:3000",
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE"],
-        allowedHeaders: ["Content-Type", "Authorization"],
+        allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+        exposedHeaders: ["Set-Cookie"],
       })
     );
 
@@ -68,9 +69,9 @@ class App {
       res.json({ status: "ok" });
     });
 
-     // Test endpoint
-     this.app.get('/test', (req, res) => {
-      res.json({ message: 'Test endpoint working' });
+    // Test endpoint
+    this.app.get("/test", (req, res) => {
+      res.json({ message: "Test endpoint working" });
     });
 
     // Debug logging for all requests

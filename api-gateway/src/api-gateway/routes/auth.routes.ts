@@ -41,10 +41,8 @@ export class AuthRoutes {
     );
 
     // Protected routes
-    this.router.post(
-      "/logout",
-      authenticate as RequestHandler,
-      (req, res, next) => this.authProxy.handleLogout(req, res, next)
+    this.router.post("/logout", (req, res, next) => 
+      this.authProxy.handleLogout(req, res, next)
     );
 
     this.router.post(

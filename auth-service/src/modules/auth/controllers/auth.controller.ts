@@ -1,52 +1,101 @@
 import { Request, Response, RequestHandler } from "express";
 import { AuthService } from "../services/auth.service";
-import { RegisterUser, LoginUser, AuthenticatedRequest } from "../interfaces/auth.interface";
-import { registerUserSchema, loginUserSchema } from "../interfaces/auth.interface";
+import {
+  RegisterUser,
+  LoginUser,
+  AuthenticatedRequest,
+} from "../interfaces/auth.interface";
+import {
+  registerUserSchema,
+  loginUserSchema,
+} from "../interfaces/auth.interface";
 
 export class AuthController {
   private service: AuthService;
 
+  // Cookie configuration object to ensure consistency
+  private readonly cookieConfig = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite:
+      process.env.NODE_ENV === "production"
+        ? ("strict" as const)
+        : ("lax" as const), // Explicitly type sameSite
+    domain: undefined,
+    path: "/", // Important: This needs to match the cookie path when it was set
+  };
+
   constructor() {
     this.service = new AuthService();
   }
-
   private setCookies(
     res: Response,
     accessToken: string,
     refreshToken: string,
     req: Request
   ) {
-    if (this.isWebRequest(req)) {
-      res.cookie("vn_auth_token", accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 15 * 60 * 1000, // 15 minutes
-      });
+    console.log('setCookies called with:', {
+      hasAccessToken: !!accessToken,
+      accessTokenLength: accessToken?.length,
+      hasRefreshToken: !!refreshToken,
+      refreshTokenLength: refreshToken?.length
+    });
 
-      res.cookie("vn_refresh_token", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+    if (!accessToken || !refreshToken) {
+      console.error("Missing tokens when setting cookies");
+      throw new Error("Authentication tokens are required");
     }
 
-    return { accessToken, refreshToken };
-  }
+    // Set cookies with more debug info
+    try {
+      res.cookie("vn_auth_token", accessToken, {
+        ...this.cookieConfig,
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      });
+      
+      res.cookie("vn_refresh_token", refreshToken, {
+        ...this.cookieConfig,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      // Verify cookies were set
+      const cookies = res.getHeader('Set-Cookie');
+      console.log('Cookies after setting:', {
+        cookieHeader: cookies,
+        cookieCount: Array.isArray(cookies) ? cookies.length : 0
+      });
+
+      return { accessToken, refreshToken };
+    } catch (error) {
+      console.error('Error setting cookies:', error);
+      throw error;
+    }
+}
 
   private clearCookies(res: Response) {
-    res.clearCookie("vn_auth_token");
-    res.clearCookie("vn_refresh_token");
+    // Use the same config to clear cookies effectively
+    res.cookie("vn_auth_token", "", {
+      ...this.cookieConfig,
+      maxAge: 0, // Set maxAge to 0 to clear the cookie
+      expires: new Date(0), // Ensures compatibility with all browsers
+    });
+
+    res.cookie("vn_refresh_token", "", {
+      ...this.cookieConfig,
+      maxAge: 0, // Set maxAge to 0 to clear the cookie
+      expires: new Date(0), // Ensures compatibility with all browsers
+    });
   }
 
   private isWebRequest(req: Request): boolean {
-    return req.headers["user-agent"]?.toLowerCase().includes("mozilla") || false;
+    return (
+      req.headers["user-agent"]?.toLowerCase().includes("mozilla") || false
+    );
   }
 
   public register: RequestHandler = async (req: Request, res: Response) => {
     console.log("register", req.body);
-    
+
     try {
       const validatedData = registerUserSchema.parse(req.body);
       const result = await this.service.register(validatedData);
@@ -82,7 +131,16 @@ export class AuthController {
   public login: RequestHandler = async (req: Request, res: Response) => {
     try {
       const validatedData = loginUserSchema.parse(req.body);
+      console.log('Starting login process for:', validatedData.email);
+      
       const result = await this.service.login(validatedData);
+      
+      console.log('Login result before setCookies:', {
+        hasAccessToken: !!result.accessToken,
+        accessTokenLength: result.accessToken?.length,
+        hasRefreshToken: !!result.refreshToken,
+        refreshTokenLength: result.refreshToken?.length
+      });
 
       const tokens = this.setCookies(
         res,
@@ -91,7 +149,14 @@ export class AuthController {
         req
       );
 
-      res.status(200).json({
+      // Check response headers after setting cookies
+      const cookies = res.getHeader('Set-Cookie');
+      console.log('Response headers after setCookies:', {
+        cookies: cookies,
+        hasSetCookieHeader: !!cookies
+      });
+
+      const responseData = {
         message: "Login successful",
         data: {
           user: {
@@ -101,8 +166,16 @@ export class AuthController {
           },
           ...(this.isWebRequest(req) ? {} : tokens),
         },
+      };
+
+      console.log('Sending response:', {
+        hasUserData: !!responseData.data.user,
+        hasTokens: !this.isWebRequest(req) && !!tokens
       });
+
+      res.status(200).json(responseData);
     } catch (error: unknown) {
+      console.error('Login error:', error);
       const errorMessage =
         error instanceof Error ? error.message : "Login failed";
       res.status(401).json({
@@ -110,7 +183,8 @@ export class AuthController {
         error: error instanceof Error ? error : String(error),
       });
     }
-  };
+};
+
 
   public refresh: RequestHandler = async (req: Request, res: Response) => {
     try {
@@ -154,6 +228,12 @@ export class AuthController {
 
       this.clearCookies(res);
 
+      // Set appropriate CORS headers if needed
+      if (req.headers.origin) {
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.setHeader("Access-Control-Allow-Origin", req.headers.origin);
+      }
+
       res.status(200).json({
         message: "Logout successful",
       });
@@ -167,7 +247,10 @@ export class AuthController {
     }
   };
 
-  public updatePassword: RequestHandler = async (req: AuthenticatedRequest, res: Response) => {
+  public updatePassword: RequestHandler = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ) => {
     try {
       const userId = req.user?.userId;
       if (!userId) {
