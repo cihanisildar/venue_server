@@ -19,13 +19,13 @@ export const authenticate: RequestHandler = async (
     let accessToken: string | undefined;
     let refreshToken: string | undefined;
 
-    // Get tokens from cookies
+    // Get tokens from cookies or headers
     if (req.cookies) {
       accessToken = req.cookies.vn_auth_token;
       refreshToken = req.cookies.vn_refresh_token;
     }
 
-    // If no tokens found, check Authorization header
+    // Check headers for tokens
     if (!accessToken) {
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith("Bearer ")) {
@@ -33,138 +33,126 @@ export const authenticate: RequestHandler = async (
       }
     }
 
+    if (!refreshToken) {
+      refreshToken = req.headers.vn_refresh_token as string;
+    }
+
     if (!accessToken && !refreshToken) {
       throw new UnauthorizedError("Authentication required");
     }
 
-    const JWT_ACCESS_SECRET = process.env.JWT_SECRET!; // Using the same secret as auth service
-
-    async function refreshAccessToken(refreshToken: string) {
-      try {
-        const response = await axios.post(
-          `${process.env.AUTH_SERVICE_URL}/auth/refresh`,
-          {},
-          {
-            headers: {
-              Cookie: `vn_refresh_token=${refreshToken}`,
-            },
-          }
-        );
-
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-          response.data;
-
-        // Set new cookies
-        res.cookie("vn_auth_token", newAccessToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 15 * 60 * 1000, // 15 minutes
-        });
-
-        res.cookie("vn_refresh_token", newRefreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
-
-        return newAccessToken;
-      } catch (error) {
-        throw new UnauthorizedError("Failed to refresh token");
-      }
+    const JWT_ACCESS_SECRET = process.env.JWT_SECRET!;
+    if (!JWT_ACCESS_SECRET) {
+      console.error("JWT_SECRET is not defined");
+      throw new InternalServerError("JWT secret is not configured");
     }
 
     try {
+      let decodedToken: TokenPayload;
+
       if (!accessToken && refreshToken) {
         // If we only have refresh token, try to get a new access token
-        accessToken = await refreshAccessToken(refreshToken);
+        const { newAccessToken, newRefreshToken } = await refreshAccessToken(refreshToken);
+        
+        // Set the new tokens in cookies
+        res.cookie('vn_auth_token', newAccessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax'
+        });
+        
+        res.cookie('vn_refresh_token', newRefreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax'
+        });
+
+        accessToken = newAccessToken;
       }
 
-      const decoded = verify(accessToken!, JWT_ACCESS_SECRET) as TokenPayload;
-      req.user = {
-        userId: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
-        reliabilityScore: decoded.reliabilityScore,
-      };
-      next();
-    } catch (verifyError: unknown) {
-      if (verifyError instanceof Error) {
+      try {
+        decodedToken = verify(accessToken!, JWT_ACCESS_SECRET) as TokenPayload;
+      } catch (verifyError: unknown) {
         if (
+          verifyError instanceof Error &&
           verifyError.name === "TokenExpiredError" &&
           refreshToken
         ) {
-          try {
-            // Token expired, try to refresh
-            const newAccessToken = await refreshAccessToken(refreshToken);
-            const decoded = verify(
-              newAccessToken,
-              JWT_ACCESS_SECRET
-            ) as TokenPayload;
-            req.user = {
-              userId: decoded.userId,
-              email: decoded.email,
-              role: decoded.role,
-              reliabilityScore: decoded.reliabilityScore,
-            };
-            next();
-          } catch (refreshError) {
-            throw new UnauthorizedError("Session expired. Please login again.");
-          }
-        } else if (verifyError.name === "JsonWebTokenError") {
-          throw new UnauthorizedError("Invalid token");
+          // Token expired, try to refresh
+          const { newAccessToken, newRefreshToken } = await refreshAccessToken(refreshToken);
+          
+          // Set the new tokens in cookies
+          res.cookie('vn_auth_token', newAccessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+          });
+          
+          res.cookie('vn_refresh_token', newRefreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+          });
+
+          decodedToken = verify(
+            newAccessToken,
+            JWT_ACCESS_SECRET
+          ) as TokenPayload;
         } else {
-          throw new InternalServerError(
-            "An error occurred during token verification"
-          );
+          throw verifyError;
         }
-      } else {
-        throw new InternalServerError("An unexpected error occurred");
       }
+
+      req.user = {
+        userId: decodedToken.userId,
+        email: decodedToken.email,
+        role: decodedToken.role,
+        reliabilityScore: decodedToken.reliabilityScore,
+      };
+
+      next();
+    } catch (verifyError: unknown) {
+      console.error("Token verification error:", verifyError);
+      // Clear cookies on verification failure
+      res.clearCookie('vn_auth_token');
+      res.clearCookie('vn_refresh_token');
+      throw new UnauthorizedError("Invalid or expired token");
     }
   } catch (error) {
+    // Clear cookies on any authentication error
+    res.clearCookie('vn_auth_token');
+    res.clearCookie('vn_refresh_token');
     next(error);
   }
 };
 
-export const logout: RequestHandler = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+async function refreshAccessToken(refreshToken: string): Promise<{ newAccessToken: string, newRefreshToken: string }> {
   try {
-    // Clear cookies on the client side
-    res.clearCookie("vn_auth_token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-    
-    res.clearCookie("vn_refresh_token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
+    const response = await axios.post(
+      `${process.env.AUTH_SERVICE_URL}/auth/refresh`,
+      { refreshToken },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    // Notify auth service about logout
-    try {
-      await axios.post(
-        `${process.env.AUTH_SERVICE_URL}/auth/logout`,
-        {},
-        {
-          headers: {
-            Cookie: `vn_refresh_token=${req.cookies.vn_refresh_token}`,
-          },
-        }
-      );
-    } catch (error) {
-      console.error("Error notifying auth service about logout:", error);
-      // Continue with logout even if auth service notification fails
+    if (!response.data.accessToken || !response.data.refreshToken) {
+      throw new Error("Invalid response from auth service");
     }
 
-    res.status(200).json({ message: "Successfully logged out" });
+    return {
+      newAccessToken: response.data.accessToken,
+      newRefreshToken: response.data.refreshToken
+    };
   } catch (error) {
-    next(error);
+    if (axios.isAxiosError(error)) {
+      console.error("Refresh token error details:", {
+        status: error.response?.status,
+        message: error.response?.data,
+      });
+    }
+    throw new UnauthorizedError("Failed to refresh token - please login again");
   }
-};
+}

@@ -19,8 +19,9 @@ export class UserRepository {
   }
 
   async findById(userId: string): Promise<IUserProfile | null> {
+    console.log("Querying user with ID:", userId); // Log the userId being queried
     return this.prisma.userProfile.findUnique({
-      where: { id: userId },
+      where: { id: userId }, // Ensure this matches the field name in your database
     });
   }
 

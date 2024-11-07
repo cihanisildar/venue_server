@@ -4,8 +4,10 @@ import {
   UpdateUserPreferenceDTO,
   IUserProfileResponse,
   IUserPreference,
+  IUserProfile,
 } from "../interfaces/user.interface";
 import { UserRepository } from "../repositories/user.repository";
+
 
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
@@ -22,6 +24,20 @@ export class UserService {
       ...user,
       preferences: preferences || undefined,
     };
+  }
+
+  async createUserProfile(userData: IUserProfile): Promise<IUserProfileResponse> {
+    // Ensure that userData contains necessary fields
+    if (!userData.email || !userData.username) {
+      throw new CustomError("Email and username are required", 400);
+    }
+
+    // Create user in the repository
+    const newUser = await this.userRepository.create({
+      ...userData,
+    });
+
+    return newUser; // Return the created user profile
   }
 
   async updateUserPreferences(

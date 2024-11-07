@@ -39,12 +39,17 @@ export interface IUserProfileResponse extends IUserProfile {
 
 // DTOs
 export interface CreateUserProfileDTO {
+  id: string;
   email: string;
   username: string;
-  name?: string;
-  age?: number;
-  phoneNumber?: string;
-  role?: UserRole;
+  name?: string | null; // Allow null
+  age?: number | null;
+  phoneNumber?: string | null;
+  role: UserRole;
+  reliabilityScore?: number; // Optional if you want to set a default in the repository
+  restrictedUntil?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface UpdateUserPreferenceDTO {

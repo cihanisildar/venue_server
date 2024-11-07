@@ -2,7 +2,13 @@ import { compare } from 'bcrypt';
 import { sign, verify } from 'jsonwebtoken';
 import { AuthRepository } from '../repositories/auth.repository';
 import { RegisterUser, LoginUser, TokenPayload } from '../interfaces/auth.interface';
-import prisma from '../../../../prisma/prisma';
+import axios, { AxiosError } from 'axios';
+
+const CONFIG = {
+  services: {
+    internalAuthToken: process.env.INTERNAL_AUTH_TOKEN,
+  },
+};
 
 export class AuthService {
   private repository: AuthRepository;
@@ -10,6 +16,7 @@ export class AuthService {
   private readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
   private readonly ACCESS_TOKEN_EXPIRY = '15m';
   private readonly REFRESH_TOKEN_EXPIRY = '7d';
+  private readonly userServiceUrl = process.env.USER_SERVICE_URL;
 
   constructor() {
     // Validate JWT secrets are properly configured
@@ -20,6 +27,7 @@ export class AuthService {
   }
 
   async register(userData: RegisterUser) {
+    // 1. First check if user exists
     const existingUser = await this.repository.findUserByEmail(userData.email);
     if (existingUser) {
       throw new Error('User already exists');
@@ -30,13 +38,53 @@ export class AuthService {
       throw new Error('Username already taken');
     }
 
-    const user = await this.repository.createUser(userData);
-    const { accessToken, refreshToken } = await this.generateTokens(user);
-    
-    await this.repository.updateLastLogin(user.id);
-    
-    return { user, accessToken, refreshToken };
-  }
+    try {
+      // 2. Create AuthUser
+      const authUser = await this.repository.createUser(userData);
+      
+      // 3. Generate tokens
+      const { accessToken, refreshToken } = await this.generateTokens(authUser);
+      
+      // 4. Create UserProfile
+      await this.createUserProfile(authUser, accessToken); // Pass the access token
+
+      // 5. Update last login and return result
+      await this.repository.updateLastLogin(authUser.id);
+      
+      return { user: authUser, accessToken, refreshToken };
+    } catch (error) {
+      // Handle any other errors
+      throw error;
+    }
+}
+
+private async createUserProfile(authUser: any, accessToken: string) { // Accept access token as parameter
+    try {
+      console.log('Sending request to create user profile');
+
+      await axios.post(`${this.userServiceUrl}/api/users/profile`, {
+        id: authUser.id,
+        email: authUser.email,
+        username: authUser.username,
+        role: authUser.role,
+      }, {
+        headers: {
+          Authorization: `Bearer ${accessToken}` // Use the access token for authentication
+        }
+      });
+    } catch (error) {
+      // Assert error as AxiosError to access response
+      const axiosError = error as AxiosError;
+  
+      // Log the error details for debugging
+      console.error('Error creating user profile:', axiosError.response?.data || axiosError.message);
+  
+      // If user-service profile creation fails, rollback auth user
+      await this.repository.deleteUser(authUser.id);
+      throw new Error('Failed to create user profile');
+    }
+}
+
 
   async login(loginData: LoginUser) {
     const user = await this.repository.findUserByEmail(loginData.email);
@@ -77,26 +125,31 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string) {
     try {
-      const decoded = verify(refreshToken, this.JWT_REFRESH_SECRET!) as TokenPayload;
-      
-      const storedToken = await this.repository.findRefreshToken(refreshToken);
-      if (!storedToken || !storedToken.user) {
-        throw new Error('Invalid refresh token');
-      }
+        const decoded = verify(refreshToken, this.JWT_REFRESH_SECRET!) as TokenPayload;
+        console.log("decoded content", decoded);
+        
+        const storedToken = await this.repository.findRefreshToken(refreshToken);
+        if (!storedToken || !storedToken.user) {
+            throw new Error('Invalid refresh token');
+        }
 
-      if (storedToken.user.restrictedUntil && storedToken.user.restrictedUntil > new Date()) {
-        throw new Error('Account is temporarily restricted');
-      }
+        // Check if account is restricted
+        if (storedToken.user.restrictedUntil && storedToken.user.restrictedUntil > new Date()) {
+            throw new Error('Account is temporarily restricted');
+        }
 
-      await this.repository.deleteRefreshToken(refreshToken);
+        // Delete old refresh token
+        await this.repository.deleteRefreshToken(refreshToken);
 
-      const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens(storedToken.user);
-
-      return { accessToken, refreshToken: newRefreshToken };
+        // Generate new tokens
+        const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens(storedToken.user);
+        
+        return { accessToken, refreshToken: newRefreshToken };
     } catch (error) {
-      throw new Error('Invalid refresh token');
+        console.error("Error during token refresh:", error);
+        throw new Error('Invalid refresh token'); // Consider rethrowing original error for debugging
     }
-  }
+}
 
   async logout(refreshToken: string) {
     try {

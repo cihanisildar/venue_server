@@ -19,6 +19,12 @@ export class UserRoutes {
       (req, res, next) => this.userProxy.handleGetProfile(req, res, next)
     );
 
+    this.router.post(
+      '/profile',
+      authenticate,
+      (req, res, next) => this.userProxy.handleCreateUser(req, res, next)
+    );
+
     this.router.put(
       '/preferences',
       authenticate,

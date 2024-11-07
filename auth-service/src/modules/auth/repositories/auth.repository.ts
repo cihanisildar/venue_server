@@ -105,4 +105,21 @@ export class AuthRepository {
       where: { userId },
     });
   }
+
+  async deleteUser(userId: string) {
+    // First, delete related refresh token records
+    await prisma.refreshToken.deleteMany({
+      where: { userId },
+    });
+  
+    // Then, delete related user account records
+    await prisma.userAccount.deleteMany({
+      where: { userId },
+    });
+  
+    // Finally, delete the user
+    return prisma.authUser.delete({
+      where: { id: userId },
+    });
+  }
 }

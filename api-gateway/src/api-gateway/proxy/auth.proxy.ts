@@ -78,24 +78,66 @@ export class AuthServiceProxy {
     }
   }
 
-  async handleRefresh(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  async handleRefresh(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      // Get refresh token, prioritizing header over cookie
+      const headerToken = req.headers.vn_refresh_token as string | undefined;
+      const cookieToken = req.cookies?.vn_refresh_token;
+      const refreshToken = headerToken || cookieToken;
+
+      console.log('Token selection:', {
+        headerToken: headerToken?.substring(0, 20) + '...',
+        cookieToken: cookieToken?.substring(0, 20) + '...',
+        selected: refreshToken?.substring(0, 20) + '...'
+      });
+
+      if (!refreshToken) {
+        res.status(401).json({ message: 'No refresh token provided' });
+        return;
+      }
+
+      // Make request to auth service
       const response = await this.axiosInstance.post(
         "/refresh",
+        { refreshToken }, // Send in body
         {
-          refreshToken: req.cookies.vn_refresh_token || req.body.refreshToken,
-        },
-        {
-          headers: this.getRequestHeaders(req),
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Refresh-Token': refreshToken // Send as custom header
+          }
         }
       );
+
+      // Forward any Set-Cookie headers
+      if (response.headers['set-cookie']) {
+        response.headers['set-cookie'].forEach(cookie => {
+          res.setHeader('Set-Cookie', cookie);
+        });
+      }
+
+      console.log('Auth service response:', {
+        status: response.status,
+        headers: response.headers,
+        data: response.data
+      });
+
       res.status(200).json(response.data);
-    } catch (error) {
-      this.handleProxyError(error, res);
+    } catch (error: any) {
+      console.error('Refresh token error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      if (error.response?.status === 401) {
+        res.status(401).json(error.response.data || { message: 'Invalid refresh token' });
+      } else {
+        res.status(500).json({ 
+          message: 'Internal server error during token refresh',
+          error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+      }
     }
   }
 
@@ -153,17 +195,21 @@ export class AuthServiceProxy {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
-    // Forward important headers
-    ['authorization', 'user-agent', 'origin'].forEach(header => {
-      if (req.headers[header]) {
-        headers[header] = req.headers[header] as string;
-      }
-    });
 
-    console.log('API Gateway: Request headers:', headers);
+    // Forward cookie header if present
+    if (req.headers.cookie) {
+      headers['Cookie'] = req.headers.cookie;
+    }
+
+    // Forward refresh token from header if present
+    const headerToken = req.headers.vn_refresh_token;
+    if (headerToken && typeof headerToken === 'string') {
+      headers['vn_refresh_token'] = headerToken;
+    }
+
+    console.log('Forwarding headers to auth service:', headers);
     return headers;
-}
+  }
 
   private generateCorrelationId(): string {
     return `correlation-${Date.now()}-${Math.random()

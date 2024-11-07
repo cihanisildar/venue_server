@@ -34,11 +34,11 @@ export class AuthController {
     refreshToken: string,
     req: Request
   ) {
-    console.log('setCookies called with:', {
+    console.log("setCookies called with:", {
       hasAccessToken: !!accessToken,
       accessTokenLength: accessToken?.length,
       hasRefreshToken: !!refreshToken,
-      refreshTokenLength: refreshToken?.length
+      refreshTokenLength: refreshToken?.length,
     });
 
     if (!accessToken || !refreshToken) {
@@ -52,25 +52,25 @@ export class AuthController {
         ...this.cookieConfig,
         maxAge: 15 * 60 * 1000, // 15 minutes
       });
-      
+
       res.cookie("vn_refresh_token", refreshToken, {
         ...this.cookieConfig,
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
       // Verify cookies were set
-      const cookies = res.getHeader('Set-Cookie');
-      console.log('Cookies after setting:', {
+      const cookies = res.getHeader("Set-Cookie");
+      console.log("Cookies after setting:", {
         cookieHeader: cookies,
-        cookieCount: Array.isArray(cookies) ? cookies.length : 0
+        cookieCount: Array.isArray(cookies) ? cookies.length : 0,
       });
 
       return { accessToken, refreshToken };
     } catch (error) {
-      console.error('Error setting cookies:', error);
+      console.error("Error setting cookies:", error);
       throw error;
     }
-}
+  }
 
   private clearCookies(res: Response) {
     // Use the same config to clear cookies effectively
@@ -131,15 +131,15 @@ export class AuthController {
   public login: RequestHandler = async (req: Request, res: Response) => {
     try {
       const validatedData = loginUserSchema.parse(req.body);
-      console.log('Starting login process for:', validatedData.email);
-      
+      console.log("Starting login process for:", validatedData.email);
+
       const result = await this.service.login(validatedData);
-      
-      console.log('Login result before setCookies:', {
+
+      console.log("Login result before setCookies:", {
         hasAccessToken: !!result.accessToken,
         accessTokenLength: result.accessToken?.length,
         hasRefreshToken: !!result.refreshToken,
-        refreshTokenLength: result.refreshToken?.length
+        refreshTokenLength: result.refreshToken?.length,
       });
 
       const tokens = this.setCookies(
@@ -150,10 +150,10 @@ export class AuthController {
       );
 
       // Check response headers after setting cookies
-      const cookies = res.getHeader('Set-Cookie');
-      console.log('Response headers after setCookies:', {
+      const cookies = res.getHeader("Set-Cookie");
+      console.log("Response headers after setCookies:", {
         cookies: cookies,
-        hasSetCookieHeader: !!cookies
+        hasSetCookieHeader: !!cookies,
       });
 
       const responseData = {
@@ -168,14 +168,14 @@ export class AuthController {
         },
       };
 
-      console.log('Sending response:', {
+      console.log("Sending response:", {
         hasUserData: !!responseData.data.user,
-        hasTokens: !this.isWebRequest(req) && !!tokens
+        hasTokens: !this.isWebRequest(req) && !!tokens,
       });
 
       res.status(200).json(responseData);
     } catch (error: unknown) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Login failed";
       res.status(401).json({
@@ -183,19 +183,24 @@ export class AuthController {
         error: error instanceof Error ? error : String(error),
       });
     }
-};
-
+  };
 
   public refresh: RequestHandler = async (req: Request, res: Response) => {
     try {
+      console.log("Cookies received:", req.cookies);
+      console.log("Headers received:", req.headers);
+
       const refreshToken =
         req.cookies.vn_refresh_token || req.body.refreshToken;
+      console.log("Refresh token being used:", refreshToken);
 
       if (!refreshToken) {
         throw new Error("No refresh token provided");
       }
 
       const tokens = await this.service.refreshTokens(refreshToken);
+      console.log("New tokens generated:", tokens);
+
       const newTokens = this.setCookies(
         res,
         tokens.accessToken,
@@ -203,11 +208,17 @@ export class AuthController {
         req
       );
 
+      console.log("Response being sent:", {
+        message: "Tokens refreshed successfully",
+        data: this.isWebRequest(req) ? {} : newTokens,
+      });
+
       res.status(200).json({
         message: "Tokens refreshed successfully",
         data: this.isWebRequest(req) ? {} : newTokens,
       });
     } catch (error: unknown) {
+      console.error("Refresh error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Token refresh failed";
       res.status(401).json({
