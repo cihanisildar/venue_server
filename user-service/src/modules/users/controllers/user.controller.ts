@@ -42,8 +42,10 @@ export class UserController {
 
   public createUserProfile = async (req: Request, res: Response) => {
     try {
-      console.log("request reached");
-      console.log("Received headers:", req.headers);
+      console.log("Incoming request for createUserProfile:", {
+        headers: req.headers,
+        body: req.body,
+      });
 
       const userData = req.body; // Get user data from request body
       const userProfile = await this.userService.createUserProfile(userData); // Directly call the service method

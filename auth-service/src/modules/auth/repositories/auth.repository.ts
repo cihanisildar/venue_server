@@ -27,6 +27,35 @@ export class AuthRepository {
     });
   }
 
+  async createUserForUserService(userData: RegisterUser) {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+
+    // Create the user but return only necessary details
+    const authUser = await prisma.authUser.create({
+      data: {
+        email: userData.email,
+        username: userData.username,
+        account: {
+          create: {
+            hashedPassword,
+            salt,
+          },
+        },
+        refreshTokens: { create: [] },
+      },
+      include: {
+        account: true,
+      },
+    });
+
+    // Destructure to get only the necessary fields
+    const { id, email, username } = authUser;
+
+    // Return just the necessary fields
+    return { id, email, username };
+  }
+
   async findUserByEmail(email: string) {
     return prisma.authUser.findUnique({
       where: { email },
@@ -111,12 +140,12 @@ export class AuthRepository {
     await prisma.refreshToken.deleteMany({
       where: { userId },
     });
-  
+
     // Then, delete related user account records
     await prisma.userAccount.deleteMany({
       where: { userId },
     });
-  
+
     // Finally, delete the user
     return prisma.authUser.delete({
       where: { id: userId },

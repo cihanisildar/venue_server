@@ -29,7 +29,7 @@ export class UserServiceProxy {
   ): Promise<void> {
     try {
       const userData: CreateUserDTO = req.body;
-      const response = await this.axiosInstance.post("/users/profile", userData, {
+      const response = await this.axiosInstance.post("/profile", userData, {
         headers: this.getRequestHeaders(req),
       });
       res.status(201).json(response.data);
@@ -44,7 +44,7 @@ export class UserServiceProxy {
     next: NextFunction
   ): Promise<void> {
     try {
-      const response = await this.axiosInstance.get(`/users/profile`, {
+      const response = await this.axiosInstance.get(`/profile`, {
         headers: this.getRequestHeaders(req),
       });
       res.status(200).json(response.data);
@@ -53,25 +53,25 @@ export class UserServiceProxy {
     }
   }
 
-  async handleCreateUserProfile(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
-    try {
-      const profileData = req.body; // Assuming the profile data is sent in the request body
-      const response = await this.axiosInstance.post(
-        "/users/profile",
-        profileData,
-        {
-          headers: this.getRequestHeaders(req),
-        }
-      );
-      res.status(201).json(response.data);
-    } catch (error) {
-      this.handleProxyError(error, res);
-    }
-  }
+  // async handleCreateUserProfile(
+  //   req: Request,
+  //   res: Response,
+  //   next: NextFunction
+  // ): Promise<void> {
+  //   try {
+  //     const profileData = req.body; // Assuming the profile data is sent in the request body
+  //     const response = await this.axiosInstance.post(
+  //       "/profile",
+  //       profileData,
+  //       {
+  //         headers: this.getRequestHeaders(req),
+  //       }
+  //     );
+  //     res.status(201).json(response.data);
+  //   } catch (error) {
+  //     this.handleProxyError(error, res);
+  //   }
+  // }
 
   async handleUpdatePreferences(
     req: AuthenticatedRequest,
@@ -81,7 +81,7 @@ export class UserServiceProxy {
     try {
       const preferences: UpdateUserPreferenceDTO = req.body;
       const response = await this.axiosInstance.put(
-        `/users/preferences`,
+        `/preferences`,
         preferences,
         {
           headers: this.getRequestHeaders(req),
@@ -100,7 +100,7 @@ export class UserServiceProxy {
   ): Promise<void> {
     try {
       const response = await this.axiosInstance.get(
-        `/users/reliability-score`,
+        `/reliability-score`,
         {
           headers: this.getRequestHeaders(req),
         }

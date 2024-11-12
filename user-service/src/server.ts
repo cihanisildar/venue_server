@@ -16,7 +16,26 @@ const port = config.port;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000", // Frontend
+      "http://localhost:8000", // API Gateway
+      process.env.CORS_ORIGIN,
+    ].filter(Boolean) as string[],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-correlation-id",
+      "x-user-id",
+      "Cookie",
+    ],
+    exposedHeaders: ["Set-Cookie"],
+  })
+);
+
 app.use(express.json());
 
 // Initialize dependencies
@@ -31,7 +50,7 @@ app.get('/health', (req, res) => {
 });
 
 // Setup user routes
-app.use('/users', setupUserRoutes(userController));
+app.use('/', setupUserRoutes(userController));
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

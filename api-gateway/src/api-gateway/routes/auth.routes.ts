@@ -15,12 +15,12 @@ export class AuthRoutes {
     this.authProxy = new AuthServiceProxy();
     this.initializeRoutes();
 
-      // Debug logging
-      console.log('Auth routes initialized with paths:', 
-        this.router.stack.map(r => r.route?.path).filter(Boolean)
-      );
+    // Debug logging
+    console.log(
+      "Auth routes initialized with paths:",
+      this.router.stack.map((r) => r.route?.path).filter(Boolean)
+    );
   }
-  
 
   private initializeRoutes() {
     // Public routes
@@ -40,8 +40,16 @@ export class AuthRoutes {
       this.authProxy.handleRefresh(req, res, next)
     );
 
+    this.router.get("/auth", (req, res, next) =>
+      this.authProxy.handleRefresh(req, res, next)
+    );
+
+    this.router.get("/check", (req, res, next) =>
+      this.authProxy.checkAuth(req, res, next) // Call the checkAuth method
+    );
+    
     // Protected routes
-    this.router.post("/logout", (req, res, next) => 
+    this.router.post("/logout", (req, res, next) =>
       this.authProxy.handleLogout(req, res, next)
     );
 

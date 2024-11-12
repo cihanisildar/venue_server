@@ -28,7 +28,10 @@ export const validateAuth: RequestHandler = async (
   try {
     const authService = new AuthService();
     const token = req.cookies?.vn_auth_token || req.header('Authorization')?.replace('Bearer ', '');
-
+    console.log("Tokens baby:",token);
+    console.log("Headers baby:", req.headers);
+    
+    
     if (!token) {
       res.status(401).json({ message: 'Authentication required' });
       return;
