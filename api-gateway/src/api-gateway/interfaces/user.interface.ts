@@ -38,3 +38,13 @@ export interface UserProfileDTO {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface UpdateUserProfileDTO {
+  email?: string;
+  username?: string;
+  age?: number;
+  name?: string;
+  phoneNumber?: string;
+  role?: UserRole;
+  restrictedUntil?: Date;
+}

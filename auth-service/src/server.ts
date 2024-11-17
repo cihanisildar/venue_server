@@ -1,4 +1,4 @@
-import cookieParser from "cookie-parser"; // Add this import
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
@@ -13,6 +13,7 @@ const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
+app.use(cookieParser());
 app.use(
   cors({
     origin: [
@@ -35,7 +36,6 @@ app.use(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); // Add cookie parser middleware
 
 // Health check endpoint
 app.get("/health", (req, res) => {

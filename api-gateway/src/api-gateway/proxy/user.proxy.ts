@@ -5,7 +5,9 @@ import { AuthenticatedRequest } from "../interfaces/auth.interface";
 import {
   CreateUserDTO,
   UpdateUserPreferenceDTO,
+  UpdateUserProfileDTO,
 } from "../interfaces/user.interface";
+import { UnauthorizedError } from "../../common/errors/custom.error";
 
 export class UserServiceProxy {
   private readonly axiosInstance: AxiosInstance;
@@ -45,6 +47,29 @@ export class UserServiceProxy {
   ): Promise<void> {
     try {
       const response = await this.axiosInstance.get(`/profile`, {
+        headers: this.getRequestHeaders(req),
+      });
+      res.status(200).json(response.data);
+    } catch (error) {
+      this.handleProxyError(error, res);
+    }
+  }
+
+  async handleUpdateProfile(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.user || !req.user.userId) {
+        throw new UnauthorizedError("User not authenticated");
+      }
+
+      const userId = req.user.userId;
+      console.log("Updating profile for user:", userId);
+
+      const profileData: UpdateUserProfileDTO = req.body;
+      const response = await this.axiosInstance.put(`/profile`, profileData, {
         headers: this.getRequestHeaders(req),
       });
       res.status(200).json(response.data);
@@ -99,12 +124,9 @@ export class UserServiceProxy {
     next: NextFunction
   ): Promise<void> {
     try {
-      const response = await this.axiosInstance.get(
-        `/reliability-score`,
-        {
-          headers: this.getRequestHeaders(req),
-        }
-      );
+      const response = await this.axiosInstance.get(`/reliability-score`, {
+        headers: this.getRequestHeaders(req),
+      });
       res.status(200).json(response.data);
     } catch (error) {
       this.handleProxyError(error, res);
@@ -112,13 +134,20 @@ export class UserServiceProxy {
   }
 
   private getRequestHeaders(req: Request) {
+    let authHeader = req.headers.authorization;
+
+    // If no Authorization header but token exists in cookies, use it
+    if (!authHeader && req.cookies?.vn_auth_token) {
+      authHeader = `Bearer ${req.cookies.vn_auth_token}`;
+    }
+
     return {
-      Authorization: req.headers.authorization,
+      Authorization: authHeader,
       "x-correlation-id":
         req.headers["x-correlation-id"] || this.generateCorrelationId(),
-      "x-user-id":
-        (req as AuthenticatedRequest).user?.userId || req.headers["x-user-id"], // For testing purposes
-      "X-Gateway-Secret": process.env.API_GATEWAY_SECRET, // Add this line
+      "X-Gateway-Secret": process.env.API_GATEWAY_SECRET,
+      // Forward cookies if they exist
+      Cookie: req.headers.cookie,
     };
   }
 

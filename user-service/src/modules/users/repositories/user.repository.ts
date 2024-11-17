@@ -51,6 +51,31 @@ export class UserRepository {
     };
   }
 
+  async updateUser(
+    userId: string,
+    profileData: Partial<IUserProfile>
+  ): Promise<IUserProfile> {
+    // Ensure that the user exists
+    const existingUser = await this.prisma.userProfile.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+
+    // Update the user profile
+    const updatedUser = await this.prisma.userProfile.update({
+      where: { id: userId },
+      data: {
+        ...profileData,
+        updatedAt: new Date(),
+      },
+    });
+
+    return updatedUser;
+  }
+
   async updatePreferences(
     userId: string,
     preferencesData: UpdateUserPreferenceDTO

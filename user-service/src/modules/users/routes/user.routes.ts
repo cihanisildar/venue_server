@@ -11,6 +11,7 @@ export const setupUserRoutes = (userController: UserController): Router => {
   // User routes
   userRouter.get('/profile', userController.getUserProfile);
   userRouter.post('/profile', userController.createUserProfile);
+  userRouter.put('/profile', userController.updateUserProfile);
   userRouter.patch('/preferences', userController.updateUserPreferences);
   userRouter.get('/reliability-score', userController.getUserReliabilityScore);
 

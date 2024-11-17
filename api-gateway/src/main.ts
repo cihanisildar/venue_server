@@ -24,21 +24,42 @@ class App {
   private initializeMiddlewares(): void {
     // Order of middleware is important!
     this.app.use(helmet());
-
+    this.app.use(cookieParser());
+    
+    const allowedOrigins = [
+      process.env.CLIENT_URL,
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:3002",
+      "http://localhost:3003",
+    ].filter(Boolean);
     this.app.use(
       cors({
-        origin: process.env.CLIENT_URL || "http://localhost:3000" || "http://localhost:3001" || "http://localhost:3002" || "http://localhost:3003",
+        origin: function (origin, callback) {
+          // Allow requests with no origin (like mobile apps or curl requests)
+          if (!origin) return callback(null, true);
+
+          if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+          } else {
+            console.log("Origin blocked:", origin);
+            callback(new Error("Not allowed by CORS"));
+          }
+        },
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE"],
-        allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "Cookie",
+          "X-Gateway-Secret",
+        ],
         exposedHeaders: ["Set-Cookie"],
       })
     );
-
     // Body parsing middleware should come before routes
     this.app.use(express.json({ limit: "10mb" }));
     this.app.use(express.urlencoded({ extended: true }));
-    this.app.use(cookieParser());
 
     // Add logging middleware
     this.app.use((req, res, next) => {
@@ -62,12 +83,7 @@ class App {
     const userRoutes = new UserRoutes();
 
     this.app.use("/api/auth", authRoutes.router);
-    this.app.use("/api/users", userRoutes.router);
-
-    // Debug route to verify Express is working
-    this.app.get("/health", (req, res) => {
-      res.json({ status: "ok" });
-    });
+    this.app.use("/api/user", userRoutes.router);
 
     // Test endpoint
     this.app.get("/test", (req, res) => {
