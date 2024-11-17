@@ -8,7 +8,6 @@ import { errorHandler } from "./api-gateway/middleware/error.middleware";
 import { rateLimiter } from "./api-gateway/middleware/rate-limit.middleware";
 import { AuthRoutes } from "./api-gateway/routes/auth.routes";
 import { UserRoutes } from "./api-gateway/routes/user.routes";
-import { swaggerSpec, swaggerUi } from "./api-gateway/config/swagger.config";
 
 dotenv.config();
 
@@ -19,33 +18,14 @@ class App {
     this.app = express();
     this.initializeMiddlewares();
     this.initializeRoutes();
-    this.initializeSwagger();
     this.initializeErrorHandling();
-  }
-
-  private initializeSwagger(): void {
-    this.app.use(
-      "/api-docs",
-      swaggerUi.serve,
-      swaggerUi.setup(swaggerSpec, {
-        customCss: ".swagger-ui .topbar { display: none }",
-        customSiteTitle: "API Documentation",
-        customfavIcon: "/favicon.ico",
-      })
-    );
-
-    // Endpoint to serve swagger.json
-    this.app.get("/swagger.json", (req, res) => {
-      res.setHeader("Content-Type", "application/json");
-      res.send(swaggerSpec);
-    });
   }
 
   private initializeMiddlewares(): void {
     // Order of middleware is important!
     this.app.use(helmet());
     this.app.use(cookieParser());
-
+    
     const allowedOrigins = [
       process.env.CLIENT_URL,
       "http://localhost:3000",
