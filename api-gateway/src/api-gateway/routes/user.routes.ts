@@ -17,7 +17,7 @@ export class UserRoutes {
       this.userProxy.handleGetProfile(req, res, next)
     );
 
-    this.router.post("/profile", authenticate, (req, res, next) =>
+    this.router.post("/profile", (req, res, next) =>
       this.userProxy.handleCreateUser(req, res, next)
     );
 

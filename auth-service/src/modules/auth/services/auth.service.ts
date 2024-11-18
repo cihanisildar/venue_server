@@ -61,11 +61,10 @@ export class AuthService {
     }
 
     try {
-      const authUser = await this.repository.createUserForUserService(userData);
-      console.log("The one will send the user-service:", authUser);
+      const authUser = await this.repository.createUserForAuthService(userData);
 
       const { accessToken, refreshToken } = await this.generateTokens(authUser);
-      await this.userService.createUserProfile(authUser, accessToken);
+      // await this.userService.createUserProfile(authUser, accessToken);
       await this.repository.updateLastLogin(authUser.id);
 
       // Set cookies

@@ -27,7 +27,7 @@ export class AuthRepository {
     });
   }
 
-  async createUserForUserService(userData: RegisterUser) {
+  async createUserForAuthService(userData: RegisterUser) {
     const salt = crypto.randomBytes(16).toString("hex");
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 

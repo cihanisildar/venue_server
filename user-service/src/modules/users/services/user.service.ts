@@ -93,6 +93,6 @@ export class UserService {
     if (!user) {
       throw new CustomError("User not found", 404);
     }
-    return user.reliabilityScore;
+    return user.reliabilityScore!;
   }
 }

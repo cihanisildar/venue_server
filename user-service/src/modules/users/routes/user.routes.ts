@@ -2,18 +2,17 @@ import { Router } from 'express';
 import { UserController } from '../controllers/user.controller';
 import { validateGatewayRequest } from '../../auth/middlewares/gateway-auth.middleware';
 
-export const userRouter = Router();
-
 export const setupUserRoutes = (userController: UserController): Router => {
-  // Apply gateway validation middleware to all routes
-  userRouter.use(validateGatewayRequest);
+  const userRouter = Router();
 
-  // User routes
-  userRouter.get('/profile', userController.getUserProfile);
+  // Apply middleware to all routes except POST /profile
+  userRouter.get('/profile', validateGatewayRequest, userController.getUserProfile);
+  userRouter.put('/profile', validateGatewayRequest, userController.updateUserProfile);
+  userRouter.patch('/preferences', validateGatewayRequest, userController.updateUserPreferences);
+  userRouter.get('/reliability-score', validateGatewayRequest, userController.getUserReliabilityScore);
+
+  // Route without the middleware
   userRouter.post('/profile', userController.createUserProfile);
-  userRouter.put('/profile', userController.updateUserProfile);
-  userRouter.patch('/preferences', userController.updateUserPreferences);
-  userRouter.get('/reliability-score', userController.getUserReliabilityScore);
 
   return userRouter;
 };
