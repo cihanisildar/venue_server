@@ -23,6 +23,7 @@ app.use(
     origin: [
       "http://localhost:3000", // Frontend
       "http://localhost:8000", // API Gateway
+      "http://localhost:3001", // Auth-service
       process.env.CORS_ORIGIN,
     ].filter(Boolean) as string[],
     credentials: true,
@@ -31,7 +32,7 @@ app.use(
       "Content-Type",
       "Authorization",
       "x-correlation-id",
-      "x-user-id",
+      "X-Internal-Secret",
     ],
     exposedHeaders: ["Set-Cookie"],
   })

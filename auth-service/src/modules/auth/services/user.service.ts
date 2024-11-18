@@ -11,44 +11,34 @@ export class UserService {
     }
 
     // Accepts access token as a parameter and ensures the request is sent to the correct endpoint
-    public async createUserProfile(authUser: any, accessToken: string) {
+    public async createUserProfile(authUser: any) {
         try {
-            console.log('Sending request to create user profile');
-            console.log(authUser);
-            
-            // Make the POST request to the user service to create a profile
-            await axios.post(`${this.CORS_ORIGIN}/api/users/profile`, {
-                id: authUser.id,
-                email: authUser.email,
-                username: authUser.username,
-            }, {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`, // Use the access token for authentication
-                },
-                withCredentials: true,
-            });
+          console.log("Sending request to create user profile", authUser);
+      
+          await axios.post(
+            `${process.env.USER_SERVICE_URL}/profile`, // Directly call user-service
+            {
+              id: authUser.id,
+              email: authUser.email,
+              username: authUser.username,
+            },
+            {
+              headers: {
+                "X-Internal-Secret": process.env.INTERNAL_SECRET, // Include shared secret
+              },
+            }
+          );
         } catch (error) {
-            // Assert error as AxiosError to access response data
-            const axiosError = error as AxiosError;
-            
-            // Define a clearer error message structure
-            const errorMessage = {
-                message: "Failed to create user profile",
-                reason: axiosError.response
-                    ? `Server responded with status ${axiosError.response.status}: ${axiosError.response.data}`
-                    : axiosError.request
-                    ? "No response received from server"
-                    : axiosError.message,
-                statusCode: axiosError.response?.status || 500,
-                endpoint: `${this.CORS_ORIGIN}/api/users/profile`
-            };
-
-            // Log the error details for debugging
-            console.error('Error creating user profile:', errorMessage);
-
-            // Rollback created user if profile creation fails
-            await this.repository.deleteUser(authUser.id);
-            throw new Error(JSON.stringify(errorMessage));
+          const axiosError = error as AxiosError;
+      
+          console.error("Failed to create user profile:", {
+            status: axiosError.response?.status || 500,
+            message: axiosError.response?.data || "No response from server",
+          });
+      
+          // Rollback created user if profile creation fails
+          await this.repository.deleteUser(authUser.id);
+          throw new Error("User profile creation failed");
         }
-    }
+      }
 }

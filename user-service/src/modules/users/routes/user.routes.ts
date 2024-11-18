@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { UserController } from '../controllers/user.controller';
 import { validateGatewayRequest } from '../../auth/middlewares/gateway-auth.middleware';
+import { validateInternalRequest } from '../../auth/middlewares/validate-internal-request.middleware';
 
 export const setupUserRoutes = (userController: UserController): Router => {
   const userRouter = Router();
@@ -11,8 +12,12 @@ export const setupUserRoutes = (userController: UserController): Router => {
   userRouter.patch('/preferences', validateGatewayRequest, userController.updateUserPreferences);
   userRouter.get('/reliability-score', validateGatewayRequest, userController.getUserReliabilityScore);
 
-  // Route without the middleware
-  userRouter.post('/profile', userController.createUserProfile);
+  // Route with internal requests
+  userRouter.post(
+    "/profile",
+    validateInternalRequest, // Ensure only internal requests are allowed
+    userController.createUserProfile
+  );
 
   return userRouter;
 };

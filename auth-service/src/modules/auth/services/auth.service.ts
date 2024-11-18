@@ -52,24 +52,24 @@ export class AuthService {
     if (existingUser) {
       throw new Error("User already exists");
     }
-
-    const existingUsername = await this.repository.findUserByUsername(
-      userData.username
-    );
+  
+    const existingUsername = await this.repository.findUserByUsername(userData.username);
     if (existingUsername) {
       throw new Error("Username already taken");
     }
-
+  
     try {
       const authUser = await this.repository.createUserForAuthService(userData);
-
+  
+      // Call internal method to create user profile
+      await this.userService.createUserProfile(authUser);
+  
       const { accessToken, refreshToken } = await this.generateTokens(authUser);
-      // await this.userService.createUserProfile(authUser, accessToken);
       await this.repository.updateLastLogin(authUser.id);
-
+  
       // Set cookies
       this.setCookies(res, accessToken, refreshToken);
-
+  
       return {
         user: authUser,
         tokens: this.isWebRequest(userAgent)
@@ -77,6 +77,7 @@ export class AuthService {
           : { accessToken, refreshToken },
       };
     } catch (error) {
+      console.error("Registration error:", error);
       throw error;
     }
   }
