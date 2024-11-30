@@ -25,6 +25,10 @@ export class UserRoutes {
       this.userProxy.handleUpdateProfile(req, res, next)
     );
 
+    this.router.get("/preferences", authenticate, (req, res, next) =>
+      this.userProxy.handleGetPreferences(req, res, next)
+    );
+
     this.router.put("/preferences", authenticate, (req, res, next) =>
       this.userProxy.handleUpdatePreferences(req, res, next)
     );

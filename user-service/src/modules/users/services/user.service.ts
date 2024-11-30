@@ -76,6 +76,15 @@ export class UserService {
     return emailRegex.test(email);
   }
 
+  async getUserPreferences(userId: string): Promise<IUserPreference | null> {
+    const user = await this.userRepository.findById(userId); // Ensure user exists
+    if (!user) {
+      throw new CustomError("User not found", 404);
+    }
+
+    return this.userRepository.findUserPreferences(userId); // Retrieve preferences from repository
+  }
+
   async updateUserPreferences(
     userId: string,
     preferencesData: UpdateUserPreferenceDTO

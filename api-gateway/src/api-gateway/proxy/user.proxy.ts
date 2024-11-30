@@ -78,25 +78,20 @@ export class UserServiceProxy {
     }
   }
 
-  // async handleCreateUserProfile(
-  //   req: Request,
-  //   res: Response,
-  //   next: NextFunction
-  // ): Promise<void> {
-  //   try {
-  //     const profileData = req.body; // Assuming the profile data is sent in the request body
-  //     const response = await this.axiosInstance.post(
-  //       "/profile",
-  //       profileData,
-  //       {
-  //         headers: this.getRequestHeaders(req),
-  //       }
-  //     );
-  //     res.status(201).json(response.data);
-  //   } catch (error) {
-  //     this.handleProxyError(error, res);
-  //   }
-  // }
+  async handleGetPreferences(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const response = await this.axiosInstance.get(`/preferences`, {
+        headers: this.getRequestHeaders(req),
+      });
+      res.status(200).json(response.data);
+    } catch (error) {
+      this.handleProxyError(error, res);
+    }
+  }
 
   async handleUpdatePreferences(
     req: AuthenticatedRequest,
@@ -105,13 +100,26 @@ export class UserServiceProxy {
   ): Promise<void> {
     try {
       const preferences: UpdateUserPreferenceDTO = req.body;
+      const userId = req.body.userId; // Assuming userId is part of req.body
+      if (!userId) {
+        throw new Error("User ID is required");
+      }
+
+      // Combine userId and preferences into a single object
+      const requestBody = {
+        userId,
+        ...preferences,
+      };
+
+      // Send the PUT request with the combined payload
       const response = await this.axiosInstance.put(
         `/preferences`,
-        preferences,
+        requestBody,
         {
           headers: this.getRequestHeaders(req),
         }
       );
+
       res.status(200).json(response.data);
     } catch (error) {
       this.handleProxyError(error, res);

@@ -60,6 +60,28 @@ export class UserController {
     }
   };
 
+  public getUserPreferences = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ) => {
+    try {
+      const userId = req.user?.userId; // Extract user ID from authenticated request
+      if (!userId) {
+        throw new CustomError("User ID is required", 400);
+      }
+
+      const preferences = await this.userService.getUserPreferences(userId); // Call service to get preferences
+      res.status(200).json(preferences);
+    } catch (error: unknown) {
+      if (error instanceof CustomError) {
+        res.status(error.statusCode).json({ message: error.message });
+      } else {
+        console.error("Unexpected error:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    }
+  };
+
   public updateUserPreferences = async (
     req: AuthenticatedRequest,
     res: Response
@@ -108,25 +130,31 @@ export class UserController {
     }
   };
 
-  public updateUserProfile = async (req: AuthenticatedRequest, res: Response) => {
+  public updateUserProfile = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ) => {
     try {
       console.log("Incoming request for updateUserProfile:", {
         headers: req.headers,
         body: req.body,
-        user: req.user
+        user: req.user,
       });
-  
+
       const userId = req.user?.userId;
       if (!userId) {
         throw new CustomError("User ID is required", 400);
       }
-  
+
       const profileData = req.body; // Extract updated profile data from request body
       console.log("Profile data to update:", profileData);
-  
-      const updatedProfile = await this.userService.updateUserProfile(userId, profileData);
+
+      const updatedProfile = await this.userService.updateUserProfile(
+        userId,
+        profileData
+      );
       console.log("Updated user profile:", updatedProfile);
-  
+
       res.status(200).json(updatedProfile);
     } catch (error: unknown) {
       if (error instanceof CustomError) {
@@ -137,6 +165,4 @@ export class UserController {
       }
     }
   };
-  
 }
-
