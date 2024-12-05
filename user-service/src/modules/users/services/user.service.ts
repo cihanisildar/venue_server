@@ -77,12 +77,33 @@ export class UserService {
   }
 
   async getUserPreferences(userId: string): Promise<IUserPreference | null> {
-    const user = await this.userRepository.findById(userId); // Ensure user exists
+    console.log(
+      `Service: Starting to fetch preferences for user ID: ${userId}`
+    );
+
+    // Kullanıcıyı sorgulama
+    const user = await this.userRepository.findById(userId);
     if (!user) {
+      console.log(`Service: No user found with ID: ${userId}`);
       throw new CustomError("User not found", 404);
     }
 
-    return this.userRepository.findUserPreferences(userId); // Retrieve preferences from repository
+    console.log(`Service: User found:`, user);
+
+    // Preferences sorgulama
+    const preferences = await this.userRepository.findUserPreferences(userId);
+
+    if (!preferences) {
+      console.log(`Service: No preferences found for user ID: ${userId}`);
+      return null;
+    }
+
+    console.log(
+      `Service: Preferences retrieved for user ID: ${userId}:`,
+      preferences
+    );
+
+    return preferences;
   }
 
   async updateUserPreferences(

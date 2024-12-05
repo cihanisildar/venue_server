@@ -6,7 +6,8 @@ export interface IUserProfile {
   email: string;
   username: string;
   name?: string | null;
-  age?: number | null;
+  surname?: string | null;
+  birthdate?: Date | null;
   phoneNumber?: string | null;
   role?: UserRole;
   reliabilityScore?: number;

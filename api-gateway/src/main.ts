@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { errorHandler } from "./api-gateway/middleware/error.middleware";
-// import { configureRoutes } from './api-gateway/config/routes.config';
 import { rateLimiter } from "./api-gateway/middleware/rate-limit.middleware";
 import { AuthRoutes } from "./api-gateway/routes/auth.routes";
 import { UserRoutes } from "./api-gateway/routes/user.routes";
@@ -22,10 +21,9 @@ class App {
   }
 
   private initializeMiddlewares(): void {
-    // Order of middleware is important!
     this.app.use(helmet());
     this.app.use(cookieParser());
-    
+
     const allowedOrigins = [
       process.env.CLIENT_URL,
       "http://localhost:3000",
@@ -33,13 +31,11 @@ class App {
       "http://localhost:3002",
       "http://localhost:3003",
     ].filter(Boolean);
+
     this.app.use(
       cors({
         origin: function (origin, callback) {
-          // Allow requests with no origin (like mobile apps or curl requests)
-          if (!origin) return callback(null, true);
-
-          if (allowedOrigins.indexOf(origin) !== -1) {
+          if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
           } else {
             console.log("Origin blocked:", origin);
@@ -57,11 +53,10 @@ class App {
         exposedHeaders: ["Set-Cookie"],
       })
     );
-    // Body parsing middleware should come before routes
+
     this.app.use(express.json({ limit: "10mb" }));
     this.app.use(express.urlencoded({ extended: true }));
 
-    // Add logging middleware
     this.app.use((req, res, next) => {
       console.log("Incoming request:", {
         method: req.method,
@@ -76,24 +71,27 @@ class App {
   }
 
   private initializeRoutes(): void {
-    // Add debug logging
     console.log("Initializing routes...");
 
     const authRoutes = new AuthRoutes();
     const userRoutes = new UserRoutes();
 
-    this.app.use("/api/auth", authRoutes.router);
+    // Use JWT verification middleware for secured routes
     this.app.use("/api/user", userRoutes.router);
+
+    this.app.use("/api/auth", authRoutes.router);
 
     // Test endpoint
     this.app.get("/test", (req, res) => {
       res.json({ message: "Test endpoint working" });
     });
 
-    // Debug logging for all requests
     this.app.use((req, res, next) => {
       console.log(`${req.method} ${req.path} - Route not found`);
-      next();
+      res.status(404).json({
+        message: "Route not found",
+        path: req.path,
+      });
     });
   }
 
@@ -115,6 +113,7 @@ class App {
     }
   }
 }
+
 const app = new App();
 app.start().catch((error) => {
   console.error("Failed to start application:", error);

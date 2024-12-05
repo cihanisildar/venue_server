@@ -65,18 +65,33 @@ export class UserController {
     res: Response
   ) => {
     try {
+      console.log("Request received for user preferences");
+
       const userId = req.user?.userId; // Extract user ID from authenticated request
       if (!userId) {
+        console.log("Error: User ID is missing");
         throw new CustomError("User ID is required", 400);
       }
 
-      const preferences = await this.userService.getUserPreferences(userId); // Call service to get preferences
+      console.log(`Fetching preferences for user ID: ${userId}`);
+
+      const preferences = await this.userService.getUserPreferences(userId);
+
+      if (!preferences) {
+        console.log("Preferences not found for the given user ID");
+      } else {
+        console.log("Preferences retrieved successfully:", preferences);
+      }
+
       res.status(200).json(preferences);
     } catch (error: unknown) {
       if (error instanceof CustomError) {
+        console.log(
+          `Custom error occurred: ${error.message}, Status Code: ${error.statusCode}`
+        );
         res.status(error.statusCode).json({ message: error.message });
       } else {
-        console.error("Unexpected error:", error);
+        console.log("Unexpected error:", error);
         res.status(500).json({ message: "Internal server error" });
       }
     }

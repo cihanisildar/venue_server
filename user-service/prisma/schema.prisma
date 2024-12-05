@@ -14,7 +14,8 @@ model UserProfile {
   email           String           @unique
   username        String           @unique
   name            String?         
-  age             Int?
+  surname         String?
+  birthdate       DateTime?
   phoneNumber     String?
   role            UserRole         @default(CUSTOMER)  
   reliabilityScore Float           @default(100.0)
