@@ -83,7 +83,14 @@ class App {
 
     // Test endpoint
     this.app.get("/test", (req, res) => {
-      res.json({ message: "Test endpoint working" });
+      console.log("Auth token from cookies:", req.cookies.vn_auth_token);
+      console.log("Refresh token from cookies:", req.cookies.vn_refresh_token);
+    });
+
+    this.app.use((req, res, next) => {
+      console.log("Auth token from cookies:", req.cookies.vn_auth_token);
+      console.log("Refresh token from cookies:", req.cookies.vn_refresh_token);
+      next();
     });
 
     this.app.use((req, res, next) => {
