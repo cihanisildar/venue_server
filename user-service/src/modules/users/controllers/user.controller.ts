@@ -150,32 +150,24 @@ export class UserController {
     res: Response
   ) => {
     try {
-      console.log("Incoming request for updateUserProfile:", {
-        headers: req.headers,
-        body: req.body,
-        user: req.user,
-      });
-
       const userId = req.user?.userId;
       if (!userId) {
         throw new CustomError("User ID is required", 400);
       }
 
-      const profileData = req.body; // Extract updated profile data from request body
-      console.log("Profile data to update:", profileData);
-
+      // Only pass the changed fields from the request body
+      const partialUpdate = req.body;
       const updatedProfile = await this.userService.updateUserProfile(
         userId,
-        profileData
+        partialUpdate
       );
-      console.log("Updated user profile:", updatedProfile);
 
       res.status(200).json(updatedProfile);
     } catch (error: unknown) {
       if (error instanceof CustomError) {
         res.status(error.statusCode).json({ message: error.message });
       } else {
-        console.error("Unexpected error while updating user profile:", error);
+        console.error("Unexpected error:", error);
         res.status(500).json({ message: "Internal server error" });
       }
     }
