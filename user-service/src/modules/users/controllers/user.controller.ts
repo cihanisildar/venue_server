@@ -155,6 +155,9 @@ export class UserController {
         throw new CustomError("User ID is required", 400);
       }
 
+      console.log("Requested Body : ", typeof(req.body.birthdate));
+      
+
       // Only pass the changed fields from the request body
       const partialUpdate = req.body;
       const updatedProfile = await this.userService.updateUserProfile(

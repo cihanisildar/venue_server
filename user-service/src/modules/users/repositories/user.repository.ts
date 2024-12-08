@@ -64,11 +64,6 @@ export class UserRepository {
       throw new Error(`User with ID ${userId} not found`);
     }
 
-    // Convert `birthdate` to a Date object if provided
-    if (profileData.birthdate) {
-      profileData.birthdate = new Date(profileData.birthdate);
-    }
-
     // Update the user profile
     const updatedUser = await this.prisma.userProfile.update({
       where: { id: userId },
